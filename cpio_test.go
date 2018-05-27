@@ -12,15 +12,36 @@ import (
 	"bufio"
 )
 
-func filecmp(t *testing.T, h *Header, body []byte) {
-	f, err := os.Open(filepath.Join("testdata", h.Name))
+func fileinfo(t *testing.T, h *Header) (os.FileInfo, []byte, bool) {
+	t.Helper()
+	fp := filepath.Join("testdata", h.Name)
+	// don't follow links; compare the link itself
+	if h.Mode&os.ModeType == os.ModeSymlink {
+		fi, err := os.Lstat(fp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return fi, nil, true
+	}
+	f, err := os.Open(fp)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer f.Close()
 	fi, err := f.Stat()
 	if err != nil {
 		t.Fatal(err)
 	}
+	body, err := ioutil.ReadAll(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return fi, body, false
+}
+
+func filecmp(t *testing.T, h *Header, body []byte) {
+	t.Helper()
+	fi, realbody, islink := fileinfo(t, h)
 	if fi.Mode().Perm() != h.Mode.Perm() {
 		t.Errorf("mode %o != %o", fi.Mode().Perm(), h.Mode.Perm())
 	}
@@ -28,16 +49,12 @@ func filecmp(t *testing.T, h *Header, body []byte) {
 		t.Errorf("modtime %s != %s", fi.ModTime(), h.Modtime)
 	}
 	if fi.Size() != int64(h.Size) {
-		t.Errorf("size %d != %d", fi.Size(), h.Size)
+		t.Errorf("%s size %d != %d", fi.Name(), fi.Size(), h.Size)
 	}
-	if len(body) != int(h.Size) {
+	if !islink && len(body) != int(h.Size) {
 		t.Errorf("body is %d bytes but header size is %d", len(body), h.Size)
 	}
-	realbody, err := ioutil.ReadAll(f)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(realbody, body) {
+	if !islink && !bytes.Equal(realbody, body) {
 		t.Error("file contents not identical")
 		t.Errorf("real file:\n%s", realbody)
 		t.Errorf("cpio file:\n%s", body)

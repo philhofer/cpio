@@ -87,7 +87,7 @@ func (h *Header) parse(r io.Reader) error {
 	}
 
 	h.Ino = be(bin[0:])
-	h.Mode = os.FileMode(be(bin[4:]))
+	h.Mode = osmode(uint32(be(bin[4:])))
 	h.Uid = be(bin[8:])
 	h.Gid = be(bin[12:])
 	h.Nlink = be(bin[16:])
@@ -120,7 +120,7 @@ func (h *Header) parse(r io.Reader) error {
 func (h *Header) write(w io.Writer) error {
 	var binbuf [(newcSize - 6) / 2]byte
 	itobe(binbuf[:], h.Ino)
-	itobe(binbuf[4:], int(os.FileMode(h.Mode)))
+	itobe(binbuf[4:], int(unixmode(h.Mode)))
 	itobe(binbuf[8:], h.Uid)
 	itobe(binbuf[12:], h.Gid)
 	itobe(binbuf[16:], h.Nlink)
