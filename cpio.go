@@ -67,9 +67,7 @@ func itobe(b []byte, i int) {
 	binary.BigEndian.PutUint32(b, uint32(i))
 }
 
-func (h *Header) parse(r io.Reader) error {
-	var buf [newcSize]byte
-
+func (h *Header) parse(buf *[newcSize]byte, r io.Reader) error {
 	_, err := io.ReadFull(r, buf[:])
 	if err != nil {
 		return err
@@ -80,7 +78,7 @@ func (h *Header) parse(r io.Reader) error {
 		return ErrBadMagic
 	}
 
-	var bin [(newcSize - 6) / 2]byte
+	bin := buf[:(newcSize - 6)/2]
 	_, err = hex.Decode(bin[:], buf[6:])
 	if err != nil {
 		return err
@@ -147,6 +145,7 @@ type Reader struct {
 	r       io.Reader
 	curfile io.LimitedReader
 	curpad  int
+	buf     [newcSize]byte
 }
 
 // NewReader constructs a new Reader.
@@ -179,7 +178,7 @@ func (r *Reader) Next() (*Header, error) {
 	r.curfile.N = 0
 	r.curpad = 0
 	h := new(Header)
-	err := h.parse(r.r)
+	err := h.parse(&r.buf, r.r)
 	if err != nil {
 		return nil, err
 	}

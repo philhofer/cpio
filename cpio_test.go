@@ -177,3 +177,19 @@ func TestCpio(t *testing.T) {
 	}
 	listcmp(t, wantfiles, names)
 }
+
+func BenchmarkReader(b *testing.B) {
+	buf, err := ioutil.ReadFile("testdata/dir.cpio")
+	if err != nil {
+		b.Fatal(err)
+	}
+	var r bytes.Reader
+	b.SetBytes(int64(len(buf)))
+	b.ReportAllocs()
+	for i := 0; i<b.N; i++ {
+		r.Reset(buf)
+		rd := NewReader(&r)
+		for _, err := rd.Next(); err == nil; _, err = rd.Next() {
+		}
+	}
+}
