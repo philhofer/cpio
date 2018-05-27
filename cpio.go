@@ -146,7 +146,6 @@ func (h *Header) write(w io.Writer) error {
 type Reader struct {
 	r       io.Reader
 	curfile io.LimitedReader
-	curhdr  *Header
 	curpad  int
 }
 
@@ -187,7 +186,6 @@ func (r *Reader) Next() (*Header, error) {
 	if h.Name == trailername {
 		return nil, io.EOF
 	}
-	r.curhdr = h
 	r.curfile.N = int64(h.Size)
 	r.curpad = int(((h.Size + 3) &^ 3) - h.Size)
 	return h, nil
